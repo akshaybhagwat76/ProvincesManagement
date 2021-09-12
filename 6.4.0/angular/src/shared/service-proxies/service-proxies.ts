@@ -338,6 +338,64 @@ export class CountryServiceProxy {
     }
 
     /**
+     * @return Success
+     */
+    getAllCountries(): Observable<CountryDto[]> {
+        let url_ = this.baseUrl + "/api/services/app/Country/GetAllCountries";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ : any = {
+            observe: "response",
+            responseType: "blob",
+            headers: new HttpHeaders({
+                "Accept": "text/plain"
+            })
+        };
+
+        return this.http.request("get", url_, options_).pipe(_observableMergeMap((response_ : any) => {
+            return this.processGetAllCountries(response_);
+        })).pipe(_observableCatch((response_: any) => {
+            if (response_ instanceof HttpResponseBase) {
+                try {
+                    return this.processGetAllCountries(<any>response_);
+                } catch (e) {
+                    return <Observable<CountryDto[]>><any>_observableThrow(e);
+                }
+            } else
+                return <Observable<CountryDto[]>><any>_observableThrow(response_);
+        }));
+    }
+
+    protected processGetAllCountries(response: HttpResponseBase): Observable<CountryDto[]> {
+        const status = response.status;
+        const responseBlob =
+            response instanceof HttpResponse ? response.body :
+            (<any>response).error instanceof Blob ? (<any>response).error : undefined;
+
+        let _headers: any = {}; if (response.headers) { for (let key of response.headers.keys()) { _headers[key] = response.headers.get(key); }}
+        if (status === 200) {
+            return blobToText(responseBlob).pipe(_observableMergeMap(_responseText => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200.push(CountryDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return _observableOf(result200);
+            }));
+        } else if (status !== 200 && status !== 204) {
+            return blobToText(responseBlob).pipe(_observableMergeMap(_responseText => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            }));
+        }
+        return _observableOf<CountryDto[]>(<any>null);
+    }
+
+    /**
      * @param id (optional) 
      * @return Success
      */
@@ -2668,7 +2726,7 @@ export interface IChangeUiThemeInput {
 }
 
 export class CreateOrEditCountryDto implements ICreateOrEditCountryDto {
-    country: string | undefined;
+    countryName: string | undefined;
     id: number | undefined;
 
     constructor(data?: ICreateOrEditCountryDto) {
@@ -2682,7 +2740,7 @@ export class CreateOrEditCountryDto implements ICreateOrEditCountryDto {
 
     init(_data?: any) {
         if (_data) {
-            this.country = _data["country"];
+            this.countryName = _data["countryName"];
             this.id = _data["id"];
         }
     }
@@ -2696,7 +2754,7 @@ export class CreateOrEditCountryDto implements ICreateOrEditCountryDto {
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["country"] = this.country;
+        data["countryName"] = this.countryName;
         data["id"] = this.id;
         return data; 
     }
@@ -2710,7 +2768,7 @@ export class CreateOrEditCountryDto implements ICreateOrEditCountryDto {
 }
 
 export interface ICreateOrEditCountryDto {
-    country: string | undefined;
+    countryName: string | undefined;
     id: number | undefined;
 }
 
